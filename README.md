@@ -4,8 +4,8 @@ A Flask-based service for classifying documents (invoices, bank statements, and 
 
 ## Features
 
-- Supports multiple file formats (PDF, DOCX, JPG)
-- High accuracy document classification (85-93% confidence on test set)
+- Supports multiple file formats (PDF, DOCX, JPG, PNG)
+- High accuracy document classification (85-93% confidence on test set). Improved to 100% after 3hr interval.
 - Pre-trained model included
 - Simple REST API
 - Batch processing capability
