@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heron Classifier</title>
+    <style>
+        :root {
+            --primary-color: #2D3436;
+            --accent-color: #0984E3;
+            --background-color: #F5F6FA;
+            --success-color: #00B894;
+            --error-color: #FF7675;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--primary-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #636E72;
+            margin-bottom: 2rem;
+        }
+
+        .upload-area {
+            background: white;
+            border: 2px dashed #DFE6E9;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent-color);
+            background: #EBF5FF;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--accent-color);
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            color: #636E72;
+            margin-bottom: 1rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .system-status {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border-radius: 4px;
+            background: #F8F9FA;
+        }
+
+        .status-label {
+            font-weight: 500;
+        }
+
+        .status-value {
+            color: var(--accent-color);
+        }
+
+        .results {
+            margin-top: 2rem;
+        }
+
+        .result-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: left;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .filename {
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 4px;
+            background: #DFE6E9;
+            border-radius: 2px;
+            margin: 0.5rem 0;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: var(--accent-color);
+            transition: width 0.3s ease;
+        }
+
+        .classification-details {
+            font-size: 0.9rem;
+            color: #636E72;
+        }
+
+        .error-message {
+            color: var(--error-color);
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #FFF5F5;
+            border-radius: 8px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .processing {
+            animation: pulse 1.5s infinite;
+        }
+
+        .batch-summary {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .batch-confidence {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Heron Classifier</h1>
+        <p class="subtitle">Drop your files or click to upload</p>
+
+        <div class="system-status" id="systemStatus">
+            <h3>System Status</h3>
+            <div class="status-item">
+                <span class="status-label">Classifier Status:</span>
+                <span class="status-value" id="classifierStatus">Checking...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Files Processed:</span>
+                <span class="status-value" id="filesProcessed">0</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Success Rate:</span>
+                <span class="status-value" id="successRate">0%</span>
+            </div>
+        </div>
+        
+        <div class="upload-area" id="dropZone">
+            <div class="upload-icon">📄</div>
+            <p class="upload-text">Drag and drop your files here<br>or click to browse</p>
+            <input type="file" class="file-input" id="fileInput" accept=".pdf,.jpg,.png" multiple>
+        </div>
+
+        <div id="batchSummary" class="batch-summary" style="display: none;">
+            <h3>Batch Summary</h3>
+            <div class="batch-confidence">
+                Average Confidence: <span id="avgConfidence">0</span>%
+            </div>
+            <div>Total Files: <span id="totalFiles">0</span></div>
+        </div>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const results = document.getElementById('results');
+        const systemStatus = document.getElementById('systemStatus');
+
+        // Check system status on load
+        checkSystemStatus();
+        setInterval(checkSystemStatus, 30000); // Check every 30 seconds
+
+        function checkSystemStatus() {
+            fetch('/health')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('classifierStatus').textContent = 
+                        data.status === 'healthy' ? 'Ready' : 'Error';
+                })
+                .catch(error => {
+                    document.getElementById('classifierStatus').textContent = 'Error';
+                });
+
+            fetch('/metrics')
+                .then(response => response.text())
+                .then(data => {
+                    // Parse Prometheus metrics
+                    const processed = data.match(/classifier_requests_total\s+(\d+)/);
+                    const errors = data.match(/classifier_errors_total\s+(\d+)/);
+                    
+                    if (processed) {
+                        document.getElementById('filesProcessed').textContent = processed[1];
+                    }
+                    if (processed && errors) {
+                        const success = processed[1] - errors[1];
+                        const rate = (success / processed[1] * 100).toFixed(1);
+                        document.getElementById('successRate').textContent = rate + '%';
+                    }
+                });
+        }
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // Highlight drop zone when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        // Handle dropped files
+        dropZone.addEventListener('drop', handleDrop, false);
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFiles);
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function highlight(e) {
+            dropZone.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles({ target: { files: files } });
+        }
+
+        function handleFiles(e) {
+            const files = Array.from(e.target.files);
+            
+            // Clear previous results
+            results.innerHTML = '';
+            document.getElementById('batchSummary').style.display = 'none';
+            
+            if (files.length > 5) {
+                // For large batches, show summary view
+                document.getElementById('batchSummary').style.display = 'block';
+                document.getElementById('totalFiles').textContent = files.length;
+            }
+            
+            // Process each file
+            let totalConfidence = 0;
+            let processedCount = 0;
+            
+            files.forEach(file => {
+                if (files.length <= 5) {
+                    // Create individual result containers for small batches
+                    const resultItem = createResultItem(file.name);
+                    results.appendChild(resultItem);
+                }
+                
+                // Process file
+                uploadFile(file, files.length <= 5 ? results.lastChild : null, {
+                    onSuccess: (confidence) => {
+                        totalConfidence += confidence;
+                        processedCount++;
+                        
+                        // Update batch summary if needed
+                        if (files.length > 5) {
+                            const avgConfidence = (totalConfidence / processedCount * 100).toFixed(1);
+                            document.getElementById('avgConfidence').textContent = avgConfidence;
+                        }
+                    }
+                });
+            });
+        }
+
+        function createResultItem(filename) {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+            item.innerHTML = `
+                <div class="result-header">
+                    <span class="filename">${filename}</span>
+                    <span class="status">Processing...</span>
+                </div>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" style="width: 0%"></div>
+                </div>
+                <div class="classification-details"></div>
+            `;
+            return item;
+        }
+
+        function showError(message) {
+            const error = document.createElement('div');
+            error.className = 'error-message';
+            error.textContent = message;
+            results.prepend(error);
+            setTimeout(() => error.remove(), 5000);
+        }
+
+        function uploadFile(file, resultItem, callbacks = {}) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/classify_file', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                if (resultItem) {
+                    // Update individual result item for small batches
+                    const status = resultItem.querySelector('.status');
+                    const confidenceFill = resultItem.querySelector('.confidence-fill');
+                    const details = resultItem.querySelector('.classification-details');
+
+                    status.textContent = data.classification;
+                    confidenceFill.style.width = `${data.confidence * 100}%`;
+                    
+                    details.innerHTML = `
+                        <div>Confidence: ${(data.confidence * 100).toFixed(1)}%</div>
+                        <div>Method: ${data.method}</div>
+                        ${data.filename_classification ? `<div>Filename Classification: ${data.filename_classification}</div>` : ''}
+                        ${data.content_classification ? `<div>Content Classification: ${data.content_classification}</div>` : ''}
+                    `;
+                }
+
+                // Call success callback with confidence score
+                if (callbacks.onSuccess) {
+                    callbacks.onSuccess(data.confidence);
+                }
+
+                checkSystemStatus();
+            })
+            .catch(error => {
+                if (resultItem) {
+                    resultItem.querySelector('.status').textContent = 'Error';
+                    resultItem.querySelector('.classification-details').textContent = error.message;
+                    resultItem.style.borderColor = 'var(--error-color)';
+                }
+            });
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,23 @@
+INVOICE
+
+Invoice #: INV-2024-001
+Date: March 15, 2024
+
+Bill To:
+John Doe
+123 Main Street
+Anytown, ST 12345
+
+Items:
+1. Web Development Services - $1,000
+2. UI/UX Design - $500
+3. Content Creation - $300
+
+Subtotal: $1,800
+Tax (10%): $180
+Total: $1,980
+
+Payment Terms: Net 30
+Due Date: April 14, 2024
+
+Thank you for your business! 
