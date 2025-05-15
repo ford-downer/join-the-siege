@@ -10,6 +10,7 @@ A Flask-based service for classifying documents (invoices, bank statements, and 
 - Simple REST API
 - Batch processing capability
 - Easy to set up and use
+- Comprehensive test suite
 
 ## Quick Start
 
@@ -60,6 +61,42 @@ python batch_process.py
 
 The script will process all supported files in the `files` directory and display results in a table format.
 
+## Testing
+
+The project includes a comprehensive test suite covering both unit tests and integration tests.
+
+### Running Tests
+
+To run all tests:
+```bash
+python run_tests.py
+```
+
+### Test Coverage
+
+The test suite includes:
+
+1. Unit Tests (`tests/test_classifier.py`):
+   - Classifier initialization
+   - Document type classification accuracy
+   - Empty text handling
+   - Invalid text handling
+   - Confidence score validation
+
+2. Integration Tests (`tests/test_api.py`):
+   - API endpoints
+   - File upload handling
+   - Error cases
+   - Response format
+   - Classification accuracy
+
+### Adding New Tests
+
+To add new tests:
+1. Create a new test file in the `tests` directory
+2. Follow the existing test patterns
+3. Run the test suite to verify
+
 ## Pre-trained Model
 
 This repository includes a pre-trained model in the `models` directory:
@@ -88,7 +125,11 @@ Performance metrics from testing:
 │       └── classifier.py   # Document classifier
 ├── models/                # Pre-trained model files
 ├── files/                 # Test files directory
+├── tests/                 # Test suite
+│   ├── test_classifier.py # Unit tests
+│   └── test_api.py       # Integration tests
 ├── batch_process.py       # Batch processing script
+├── run_tests.py          # Test runner
 └── requirements.txt       # Python dependencies
 ```
 
